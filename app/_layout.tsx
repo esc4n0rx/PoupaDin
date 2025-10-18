@@ -22,7 +22,7 @@ function RootLayoutNav() {
     if (isAuthenticated) {
       // Usuário autenticado - redirecionar para tabs se não estiver lá
       if (!inTabsGroup) {
-        router.replace('/(tabs)');
+        router.replace('/records');
       }
     } else {
       // Usuário não autenticado - redirecionar para welcome/auth
