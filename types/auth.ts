@@ -23,7 +23,6 @@ export interface RegisterData {
 
 export interface AuthResponse {
   user: User;
-  tokens: AuthTokens;
 }
 
 export interface RecoveryRequestData {
@@ -39,11 +38,4 @@ export interface RecoveryResetData {
   email: string;
   code: string;
   new_password: string;
-}
-
-export interface DecodedToken {
-  userId: string;
-  email: string;
-  iat: number;
-  exp: number;
 }

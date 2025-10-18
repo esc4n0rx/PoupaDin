@@ -5,17 +5,12 @@
 import { ApiResponse } from '@/types/api';
 import {
     AuthResponse,
-    AuthTokens,
     LoginCredentials,
     RecoveryRequestData,
     RecoveryResetData,
-    RecoveryVerifyData,
     RegisterData,
 } from '@/types/auth';
 import { User } from '@/types/user';
-import { Crypto } from '@/utils/crypto';
-import { DateUtils } from '@/utils/date';
-import { EmailService } from '../email';
 import { supabase } from '../supabase';
 
 export const AuthAPI = {
@@ -24,70 +19,70 @@ export const AuthAPI = {
    */
   register: async (data: RegisterData): Promise<ApiResponse<AuthResponse>> => {
     try {
-      // Verificar se e-mail já existe
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', data.email.toLowerCase())
-        .single();
-
-      if (existingUser) {
-        return {
-          success: false,
-          error: 'Este e-mail já está cadastrado',
-        };
-      }
-
-      // Hash da senha
-      const passwordHash = await Crypto.hashPassword(data.password);
-
-      // Criar usuário
-      const { data: newUser, error: createError } = await supabase
-        .from('users')
-        .insert([
-          {
+      // Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email.toLowerCase(),
+        password: data.password,
+        options: {
+          data: {
             full_name: data.full_name,
-            email: data.email.toLowerCase(),
-            password_hash: passwordHash,
             birth_date: data.birth_date,
           },
-        ])
-        .select()
-        .single();
+        },
+      });
 
-      if (createError || !newUser) {
-        console.error('Error creating user:', createError);
+      if (authError) {
+        console.error('Supabase auth error:', authError);
+        
+        if (authError.message.includes('already registered')) {
+          return {
+            success: false,
+            error: 'Este e-mail já está cadastrado',
+          };
+        }
+        
         return {
           success: false,
-          error: 'Erro ao criar usuário. Tente novamente.',
+          error: authError.message || 'Erro ao criar conta',
         };
       }
 
-      // Gerar tokens (agora com await)
-      const accessToken = await Crypto.generateAccessToken(newUser.id, newUser.email);
-      const refreshToken = await Crypto.generateRefreshToken(newUser.id);
+      if (!authData.user) {
+        return {
+          success: false,
+          error: 'Erro ao criar usuário',
+        };
+      }
 
-      // Salvar refresh token no banco
-      const expiresAt = DateUtils.addDays(new Date(), 7);
-      await supabase.from('refresh_tokens').insert([
-        {
-          user_id: newUser.id,
-          token: refreshToken,
-          expires_at: expiresAt.toISOString(),
-        },
-      ]);
+      // Buscar dados completos do usuário na tabela public.users
+      const { data: userData, error: userError } = await supabase
+        .from('users')
+        .select('id, full_name, email, birth_date, created_at, updated_at')
+        .eq('id', authData.user.id)
+        .single();
 
-      // Remover password_hash do retorno
-      const { password_hash, ...userWithoutPassword } = newUser;
+      if (userError || !userData) {
+        console.error('Error fetching user data:', userError);
+        // Mesmo com erro, o usuário foi criado no auth
+        return {
+          success: true,
+          data: {
+            user: {
+              id: authData.user.id,
+              full_name: data.full_name,
+              email: data.email,
+              birth_date: data.birth_date,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            } as User,
+          },
+        };
+      }
 
       return {
         success: true,
         data: {
-          user: userWithoutPassword as User,
-          tokens: {
-            accessToken,
-            refreshToken,
-          },
+          user: userData as User,
         },
       };
     } catch (error) {
@@ -104,58 +99,46 @@ export const AuthAPI = {
    */
   login: async (credentials: LoginCredentials): Promise<ApiResponse<AuthResponse>> => {
     try {
-      // Buscar usuário por e-mail
-      const { data: user, error: userError } = await supabase
+      // Login com Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email: credentials.email.toLowerCase(),
+        password: credentials.password,
+      });
+
+      if (authError) {
+        console.error('Supabase auth error:', authError);
+        return {
+          success: false,
+          error: 'E-mail ou senha incorretos',
+        };
+      }
+
+      if (!authData.user) {
+        return {
+          success: false,
+          error: 'Erro ao fazer login',
+        };
+      }
+
+      // Buscar dados completos do usuário
+      const { data: userData, error: userError } = await supabase
         .from('users')
-        .select('*')
-        .eq('email', credentials.email.toLowerCase())
+        .select('id, full_name, email, birth_date, created_at, updated_at')
+        .eq('id', authData.user.id)
         .single();
 
-      if (userError || !user) {
+      if (userError || !userData) {
+        console.error('Error fetching user data:', userError);
         return {
           success: false,
-          error: 'E-mail ou senha incorretos',
+          error: 'Erro ao buscar dados do usuário',
         };
       }
-
-      // Verificar senha
-      const isPasswordValid = await Crypto.comparePassword(
-        credentials.password,
-        user.password_hash
-      );
-
-      if (!isPasswordValid) {
-        return {
-          success: false,
-          error: 'E-mail ou senha incorretos',
-        };
-      }
-
-      // Gerar tokens (agora com await)
-      const accessToken = await Crypto.generateAccessToken(user.id, user.email);
-      const refreshToken = await Crypto.generateRefreshToken(user.id);
-
-      // Salvar refresh token no banco
-      const expiresAt = DateUtils.addDays(new Date(), 7);
-      await supabase.from('refresh_tokens').insert([
-        {
-          user_id: user.id,
-          token: refreshToken,
-          expires_at: expiresAt.toISOString(),
-        },
-      ]);
-
-      // Remover password_hash do retorno
-      const { password_hash, ...userWithoutPassword } = user;
 
       return {
         success: true,
         data: {
-          user: userWithoutPassword as User,
-          tokens: {
-            accessToken,
-            refreshToken,
-          },
+          user: userData as User,
         },
       };
     } catch (error) {
@@ -168,126 +151,29 @@ export const AuthAPI = {
   },
 
   /**
-   * Renovar access token usando refresh token
-   */
-  refreshAccessToken: async (refreshToken: string): Promise<ApiResponse<AuthTokens>> => {
-    try {
-      // Verificar refresh token (agora com await)
-      const decoded = await Crypto.verifyRefreshToken(refreshToken);
-      if (!decoded) {
-        return {
-          success: false,
-          error: 'Token inválido',
-        };
-      }
-
-      // Verificar se o token existe no banco e não está expirado
-      const { data: tokenData, error: tokenError } = await supabase
-        .from('refresh_tokens')
-        .select('*')
-        .eq('token', refreshToken)
-        .eq('user_id', decoded.userId)
-        .gt('expires_at', new Date().toISOString())
-        .single();
-
-      if (tokenError || !tokenData) {
-        return {
-          success: false,
-          error: 'Token expirado ou inválido',
-        };
-      }
-
-      // Buscar usuário
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id, email')
-        .eq('id', decoded.userId)
-        .single();
-
-      if (userError || !user) {
-        return {
-          success: false,
-          error: 'Usuário não encontrado',
-        };
-      }
-
-      // Gerar novo access token (agora com await)
-      const newAccessToken = await Crypto.generateAccessToken(user.id, user.email);
-
-      return {
-        success: true,
-        data: {
-          accessToken: newAccessToken,
-          refreshToken: refreshToken, // Mantém o mesmo refresh token
-        },
-      };
-    } catch (error) {
-      console.error('Refresh token error:', error);
-      return {
-        success: false,
-        error: 'Erro ao renovar token',
-      };
-    }
-  },
-
-  /**
-   * Solicitar recuperação de senha (enviar código por e-mail)
+   * Solicitar recuperação de senha (Supabase envia e-mail automaticamente)
    */
   requestRecovery: async (data: RecoveryRequestData): Promise<ApiResponse<void>> => {
     try {
-      // Verificar se usuário existe
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id, full_name, email')
-        .eq('email', data.email.toLowerCase())
-        .single();
+      const { error } = await supabase.auth.resetPasswordForEmail(
+        data.email.toLowerCase(),
+        {
+          redirectTo: 'poupadin://reset-password', // Deep link para o app
+        }
+      );
 
-      if (userError || !user) {
-        // Por segurança, não revelar se o e-mail existe ou não
+      if (error) {
+        console.error('Password reset error:', error);
+        // Por segurança, não revelar se o e-mail existe
         return {
           success: true,
-          message: 'Se o e-mail estiver cadastrado, você receberá um código de recuperação.',
-        };
-      }
-
-      // Gerar código de 6 dígitos
-      const code = Crypto.generateRecoveryCode();
-      const expiresAt = DateUtils.addMinutes(new Date(), 10); // 10 minutos
-
-      // Salvar código no banco
-      const { error: codeError } = await supabase.from('recovery_codes').insert([
-        {
-          user_id: user.id,
-          code: code,
-          expires_at: expiresAt.toISOString(),
-        },
-      ]);
-
-      if (codeError) {
-        console.error('Error saving recovery code:', codeError);
-        return {
-          success: false,
-          error: 'Erro ao processar solicitação. Tente novamente.',
-        };
-      }
-
-      // Enviar e-mail com o código
-      const emailSent = await EmailService.sendRecoveryEmail({
-        to: user.email,
-        code: code,
-        userName: user.full_name,
-      });
-
-      if (!emailSent) {
-        return {
-          success: false,
-          error: 'Erro ao enviar e-mail. Tente novamente.',
+          message: 'Se o e-mail estiver cadastrado, você receberá instruções para recuperação.',
         };
       }
 
       return {
         success: true,
-        message: 'Código de recuperação enviado para seu e-mail.',
+        message: 'Instruções de recuperação enviadas para seu e-mail.',
       };
     } catch (error) {
       console.error('Request recovery error:', error);
@@ -299,123 +185,46 @@ export const AuthAPI = {
   },
 
   /**
-   * Verificar código de recuperação
+   * Atualizar senha (usado após receber link de recuperação)
    */
-  verifyRecoveryCode: async (data: RecoveryVerifyData): Promise<ApiResponse<void>> => {
+  updatePassword: async (newPassword: string): Promise<ApiResponse<void>> => {
     try {
-      // Buscar usuário
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', data.email.toLowerCase())
-        .single();
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
 
-      if (userError || !user) {
-        return {
-          success: false,
-          error: 'Código inválido ou expirado',
-        };
-      }
-
-      // Verificar código
-      const { data: codeData, error: codeError } = await supabase
-        .from('recovery_codes')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('code', data.code)
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (codeError || !codeData) {
-        return {
-          success: false,
-          error: 'Código inválido ou expirado',
-        };
-      }
-
-      return {
-        success: true,
-        message: 'Código verificado com sucesso',
-      };
-    } catch (error) {
-      console.error('Verify code error:', error);
-      return {
-        success: false,
-        error: 'Erro ao verificar código',
-      };
-    }
-  },
-
-  /**
-   * Resetar senha após verificação do código
-   */
-  resetPassword: async (data: RecoveryResetData): Promise<ApiResponse<void>> => {
-    try {
-      // Buscar usuário
-      const { data: user, error: userError } = await supabase
-        .from('users')
-        .select('id')
-        .eq('email', data.email.toLowerCase())
-        .single();
-
-      if (userError || !user) {
-        return {
-          success: false,
-          error: 'Código inválido ou expirado',
-        };
-      }
-
-      // Verificar código novamente
-      const { data: codeData, error: codeError } = await supabase
-        .from('recovery_codes')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('code', data.code)
-        .eq('used', false)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (codeError || !codeData) {
-        return {
-          success: false,
-          error: 'Código inválido ou expirado',
-        };
-      }
-
-      // Hash da nova senha
-      const passwordHash = await Crypto.hashPassword(data.new_password);
-
-      // Atualizar senha
-      const { error: updateError } = await supabase
-        .from('users')
-        .update({ password_hash: passwordHash })
-        .eq('id', user.id);
-
-      if (updateError) {
-        console.error('Error updating password:', updateError);
+      if (error) {
+        console.error('Update password error:', error);
         return {
           success: false,
           error: 'Erro ao atualizar senha. Tente novamente.',
         };
       }
 
-      // Marcar código como usado
-      await supabase
-        .from('recovery_codes')
-        .update({ used: true })
-        .eq('id', codeData.id);
-
-      // Invalidar todos os refresh tokens do usuário (segurança)
-      await supabase.from('refresh_tokens').delete().eq('user_id', user.id);
-
       return {
         success: true,
-        message: 'Senha alterada com sucesso',
+        message: 'Senha atualizada com sucesso',
+      };
+    } catch (error) {
+      console.error('Update password error:', error);
+      return {
+        success: false,
+        error: 'Erro ao atualizar senha',
+      };
+    }
+  },
+
+  /**
+   * Resetar senha com código (mantido para compatibilidade com fluxo atual)
+   */
+  resetPassword: async (data: RecoveryResetData): Promise<ApiResponse<void>> => {
+    // Como o Supabase Auth não usa códigos por padrão, 
+    // essa função pode redirecionar para updatePassword
+    // ou você pode manter a lógica custom de recovery_codes se preferir
+    try {
+      return {
+        success: false,
+        error: 'Use o link enviado por e-mail para resetar sua senha',
       };
     } catch (error) {
       console.error('Reset password error:', error);
@@ -427,13 +236,27 @@ export const AuthAPI = {
   },
 
   /**
-   * Logout - invalidar refresh token
+   * Logout
    */
-  logout: async (refreshToken: string): Promise<void> => {
+  logout: async (): Promise<void> => {
     try {
-      await supabase.from('refresh_tokens').delete().eq('token', refreshToken);
+      await supabase.auth.signOut();
     } catch (error) {
       console.error('Logout error:', error);
+    }
+  },
+
+  /**
+   * Obter sessão atual
+   */
+  getSession: async () => {
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) throw error;
+      return data.session;
+    } catch (error) {
+      console.error('Get session error:', error);
+      return null;
     }
   },
 };

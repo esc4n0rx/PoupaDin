@@ -11,13 +11,13 @@ import {
 } from 'react-native';
 import { ThemedView } from '../../components/themed-view';
 import { Button } from '../../components/ui/Button';
+import { DateInput } from '../../components/ui/DateInput';
 import { IconSymbol } from '../../components/ui/icon-symbol';
 import { Input } from '../../components/ui/Input';
 import { Toast } from '../../components/ui/Toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { Colors, Spacing, Typography } from '../../theme';
-import { DateUtils } from '../../utils/date';
 import { Validation } from '../../utils/validation';
 
 export default function RegisterScreen() {
@@ -135,34 +135,10 @@ export default function RegisterScreen() {
     router.back();
   };
 
-  const formatDateInput = (text: string) => {
-    // Remove tudo que não é número
-    const numbers = text.replace(/\D/g, '');
-    
-    // Formata como DD/MM/YYYY
-    let formatted = numbers;
-    if (numbers.length >= 2) {
-      formatted = numbers.slice(0, 2) + '/' + numbers.slice(2);
-    }
-    if (numbers.length >= 4) {
-      formatted = numbers.slice(0, 2) + '/' + numbers.slice(2, 4) + '/' + numbers.slice(4, 8);
-    }
-    
-    return formatted;
-  };
-
-  const handleDateChange = (text: string) => {
-    const formatted = formatDateInput(text);
-    
-    // Converter para formato ISO (YYYY-MM-DD) quando completo
-    if (formatted.length === 10) {
-      const [day, month, year] = formatted.split('/');
-      const isoDate = `${year}-${month}-${day}`;
-      updateField('birth_date', isoDate);
-    } else {
-      updateField('birth_date', '');
-    }
-  };
+  // Definir data mínima (13 anos atrás) e máxima (hoje)
+  const today = new Date();
+  const maxDate = new Date(today.getFullYear() - 13, today.getMonth(), today.getDate());
+  const minDate = new Date(today.getFullYear() - 120, today.getMonth(), today.getDate());
 
   return (
     <ThemedView style={styles.container}>
@@ -207,14 +183,14 @@ export default function RegisterScreen() {
               autoCorrect={false}
             />
 
-            <Input
+            <DateInput
               label="Data de nascimento"
-              placeholder="DD/MM/AAAA"
-              value={formData.birth_date ? DateUtils.formatToBrazilian(formData.birth_date) : ''}
-              onChangeText={handleDateChange}
+              placeholder="Selecione sua data de nascimento"
+              value={formData.birth_date}
+              onChange={(date) => updateField('birth_date', date)}
               error={errors.birth_date}
-              keyboardType="number-pad"
-              maxLength={10}
+              minimumDate={minDate}
+              maximumDate={maxDate}
             />
 
             <Input

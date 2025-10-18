@@ -3,54 +3,12 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { AuthTokens } from '../types/auth';
 
 const KEYS = {
-  ACCESS_TOKEN: '@poupadin:access_token',
-  REFRESH_TOKEN: '@poupadin:refresh_token',
   USER_DATA: '@poupadin:user_data',
 };
 
 export const Storage = {
-  /**
-   * Salvar tokens de autenticação
-   */
-  saveTokens: async (tokens: AuthTokens): Promise<void> => {
-    try {
-      await AsyncStorage.multiSet([
-        [KEYS.ACCESS_TOKEN, tokens.accessToken],
-        [KEYS.REFRESH_TOKEN, tokens.refreshToken],
-      ]);
-    } catch (error) {
-      console.error('Error saving tokens:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Obter access token
-   */
-  getAccessToken: async (): Promise<string | null> => {
-    try {
-      return await AsyncStorage.getItem(KEYS.ACCESS_TOKEN);
-    } catch (error) {
-      console.error('Error getting access token:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Obter refresh token
-   */
-  getRefreshToken: async (): Promise<string | null> => {
-    try {
-      return await AsyncStorage.getItem(KEYS.REFRESH_TOKEN);
-    } catch (error) {
-      console.error('Error getting refresh token:', error);
-      return null;
-    }
-  },
-
   /**
    * Salvar dados do usuário
    */
@@ -81,11 +39,7 @@ export const Storage = {
    */
   clearAll: async (): Promise<void> => {
     try {
-      await AsyncStorage.multiRemove([
-        KEYS.ACCESS_TOKEN,
-        KEYS.REFRESH_TOKEN,
-        KEYS.USER_DATA,
-      ]);
+      await AsyncStorage.removeItem(KEYS.USER_DATA);
     } catch (error) {
       console.error('Error clearing storage:', error);
       throw error;

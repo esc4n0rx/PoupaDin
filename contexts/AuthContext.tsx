@@ -1,9 +1,10 @@
 import { AuthAPI } from '@/services/api/auth';
 import { UserAPI } from '@/services/api/user';
 import { Storage } from '@/services/storage';
+import { supabase } from '@/services/supabase';
 import { LoginCredentials, RegisterData } from '@/types/auth';
 import { User } from '@/types/user';
-import { Crypto } from '@/utils/crypto';
+import { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import React, { createContext, ReactNode, useContext, useEffect, useState } from 'react';
 
 interface AuthContextData {
@@ -22,54 +23,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Verificar se usuário está autenticado ao iniciar o app
   useEffect(() => {
+    // Verificar sessão inicial
     checkAuth();
+
+    // Listener para mudanças de autenticação
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      async (event: AuthChangeEvent, session: Session | null) => {
+        console.log('Auth state changed:', event);
+
+        if (event === 'SIGNED_IN' && session?.user) {
+          await loadUserData(session.user.id);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          await Storage.clearAll();
+        } else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Token foi renovado automaticamente pelo Supabase
+          await loadUserData(session.user.id);
+        }
+      }
+    );
+
+    // Cleanup
+    return () => {
+      authListener?.subscription.unsubscribe();
+    };
   }, []);
 
   const checkAuth = async () => {
     try {
-      const accessToken = await Storage.getAccessToken();
-      const refreshToken = await Storage.getRefreshToken();
+      const session = await AuthAPI.getSession();
 
-      if (!accessToken || !refreshToken) {
-        setIsLoading(false);
-        return;
-      }
-
-      // Verificar se access token é válido (agora com await)
-      const decoded = await Crypto.verifyAccessToken(accessToken);
-
-      if (decoded) {
-        // Token válido, buscar dados do usuário
-        const response = await UserAPI.getUserById(decoded.userId);
-        if (response.success && response.data) {
-          setUser(response.data);
-        }
-      } else {
-        // Token expirado, tentar renovar
-        const response = await AuthAPI.refreshAccessToken(refreshToken);
-        if (response.success && response.data) {
-          await Storage.saveTokens(response.data);
-          
-          // Buscar dados do usuário (agora com await)
-          const decoded = await Crypto.verifyAccessToken(response.data.accessToken);
-          if (decoded) {
-            const userResponse = await UserAPI.getUserById(decoded.userId);
-            if (userResponse.success && userResponse.data) {
-              setUser(userResponse.data);
-            }
-          }
-        } else {
-          // Não foi possível renovar, fazer logout
-          await Storage.clearAll();
-        }
+      if (session?.user) {
+        await loadUserData(session.user.id);
       }
     } catch (error) {
       console.error('Check auth error:', error);
-      await Storage.clearAll();
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const loadUserData = async (userId: string) => {
+    try {
+      const response = await UserAPI.getUserById(userId);
+      if (response.success && response.data) {
+        setUser(response.data);
+        await Storage.saveUserData(response.data);
+      }
+    } catch (error) {
+      console.error('Load user data error:', error);
     }
   };
 
@@ -78,9 +81,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await AuthAPI.login(credentials);
 
       if (response.success && response.data) {
-        await Storage.saveTokens(response.data.tokens);
-        await Storage.saveUserData(response.data.user);
         setUser(response.data.user);
+        await Storage.saveUserData(response.data.user);
         return { success: true };
       }
 
@@ -95,9 +97,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await AuthAPI.register(data);
 
-      if (response.success && response.data) {
-        // Após registro, não fazer login automático
-        // Usuário precisa fazer login manualmente
+      if (response.success) {
+        // Não fazer login automático, usuário precisa confirmar email se configurado
         return { success: true };
       }
 
@@ -110,12 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const refreshToken = await Storage.getRefreshToken();
-      if (refreshToken) {
-        await AuthAPI.logout(refreshToken);
-      }
-      await Storage.clearAll();
+      await AuthAPI.logout();
       setUser(null);
+      await Storage.clearAll();
     } catch (error) {
       console.error('Logout error:', error);
     }
