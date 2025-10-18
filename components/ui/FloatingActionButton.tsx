@@ -1,3 +1,5 @@
+// components/ui/FloatingActionButton.tsx
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors, Spacing } from '@/theme';
 import React from 'react';
@@ -6,19 +8,27 @@ import { IconSymbol } from './icon-symbol';
 
 interface FloatingActionButtonProps {
   onPress: () => void;
+  icon?: any;
+  backgroundColor?: string;
 }
 
-export function FloatingActionButton({ onPress }: FloatingActionButtonProps) {
+export function FloatingActionButton({ 
+  onPress, 
+  icon = 'plus',
+  backgroundColor,
+}: FloatingActionButtonProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
+  const bgColor = backgroundColor || colors.primary;
+
   return (
     <TouchableOpacity
-      style={[styles.fab, { backgroundColor: colors.primary }]}
+      style={[styles.fab, { backgroundColor: bgColor }]}
       onPress={onPress}
       activeOpacity={0.8}>
       <IconSymbol
-        name="plus"
+        name={icon}
         size={28}
         color={colorScheme === 'light' ? '#FFFFFF' : colors.background}
       />

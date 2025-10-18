@@ -34,6 +34,9 @@ export const Colors = {
     // Input
     inputBackground: '#FFFFFF',
     inputPlaceholder: '#9E9E9E',
+
+    categoryIncome: '#4CAF50',
+    categoryExpense: '#F44336',
   },
   
   dark: {
@@ -66,6 +69,9 @@ export const Colors = {
     // Input
     inputBackground: '#2D2D2D',
     inputPlaceholder: '#808080',
+
+    categoryIncome: '#66BB6A',
+    categoryExpense: '#EF5350',
   },
 };
 
