@@ -1,12 +1,11 @@
-import { CATEGORY_ICONS } from '@/constants/categoryIcons';
+// components/category/CategoryCard.tsx
+
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { CategoryWithBudget } from '@/types/category';
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '../ui/icon-symbol';
-
-type CategoryIcon = typeof CATEGORY_ICONS[keyof typeof CATEGORY_ICONS][number];
 
 interface CategoryCardProps {
   category: CategoryWithBudget;
@@ -18,7 +17,9 @@ export function CategoryCard({ category, onPress, onLongPress }: CategoryCardPro
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  const hasbudget = category.type === 'expense' && category.monthly_budget && category.monthly_budget > 0;
+  const isIncome = category.type === 'income';
+  const isExpense = category.type === 'expense';
+  const hasBudget = isExpense && category.monthly_budget && category.monthly_budget > 0;
   const budgetPercentage = category.budget_percentage || 0;
   const isOverBudget = budgetPercentage > 100;
 
@@ -31,20 +32,34 @@ export function CategoryCard({ category, onPress, onLongPress }: CategoryCardPro
       onPress={onPress}
       onLongPress={onLongPress}
       activeOpacity={0.7}>
+      {/* Ícone */}
       <View style={[styles.iconContainer, { backgroundColor: category.color }]}>
         <IconSymbol
-          name={category.icon as CategoryIcon}
+          name={category.icon as any}
           size={24}
           color="#FFFFFF"
         />
       </View>
 
+      {/* Informações */}
       <View style={styles.info}>
         <Text style={[styles.name, { color: colors.text }]} numberOfLines={1}>
           {category.name}
         </Text>
 
-        {hasbudget && (
+        {/* Saldo para categorias de receita */}
+        {isIncome && (
+          <View style={styles.balanceInfo}>
+            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+              Saldo do mês:
+            </Text>
+            <Text style={[styles.balanceAmount, { color: colors.success }]}>
+              R$ {category.current_balance.toFixed(2)}
+            </Text>
+          </View>
+        )}
+
+        {hasBudget && (
           <>
             <View style={styles.budgetInfo}>
               <Text style={[styles.budgetText, { color: colors.textSecondary }]}>
@@ -57,6 +72,7 @@ export function CategoryCard({ category, onPress, onLongPress }: CategoryCardPro
               )}
             </View>
 
+            {/* Barra de progresso */}
             <View style={[styles.progressBar, { backgroundColor: colors.border }]}>
               <View
                 style={[
@@ -69,6 +85,18 @@ export function CategoryCard({ category, onPress, onLongPress }: CategoryCardPro
               />
             </View>
           </>
+        )}
+
+        {/* Para despesas sem orçamento, mostrar apenas o total gasto */}
+        {isExpense && !hasBudget && (
+          <View style={styles.balanceInfo}>
+            <Text style={[styles.balanceLabel, { color: colors.textSecondary }]}>
+              Gasto no mês:
+            </Text>
+            <Text style={[styles.balanceAmount, { color: colors.error }]}>
+              R$ {category.current_balance.toFixed(2)}
+            </Text>
+          </View>
         )}
       </View>
     </TouchableOpacity>
@@ -105,6 +133,18 @@ const styles = StyleSheet.create({
     fontWeight: Typography.fontWeight.semiBold,
     marginBottom: Spacing.xs,
   },
+  balanceInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  balanceLabel: {
+    fontSize: Typography.fontSize.sm,
+  },
+  balanceAmount: {
+    fontSize: Typography.fontSize.base,
+    fontWeight: Typography.fontWeight.semiBold,
+  },
   budgetInfo: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -112,7 +152,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   budgetText: {
-    fontSize: Typography.fontSize.sm,
+  fontSize: Typography.fontSize.sm,
   },
   overBudgetText: {
     fontSize: Typography.fontSize.xs,

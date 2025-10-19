@@ -14,6 +14,7 @@ export interface Category {
   icon: string;
   color: string;
   monthly_budget?: number;
+  current_balance: number; // Saldo atual da categoria
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -27,6 +28,17 @@ export interface CategoryBudget {
   month: number;
   budget_amount: number;
   spent_amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CategoryBalance {
+  id: string;
+  category_id: string;
+  user_id: string;
+  year: number;
+  month: number;
+  balance_amount: number;
   created_at: string;
   updated_at: string;
 }
@@ -49,6 +61,7 @@ export interface UpdateCategoryDTO {
 
 export interface CategoryWithBudget extends Category {
   current_budget?: CategoryBudget;
+  current_balance_record?: CategoryBalance;
   spent_amount?: number;
   remaining_amount?: number;
   budget_percentage?: number;

@@ -4,7 +4,7 @@
  * Category API Service
  */
 import { ApiResponse } from '../../types/api';
-import { Category, CategoryBudget, CategoryType, CategoryWithBudget, CreateCategoryDTO, UpdateCategoryDTO } from '../../types/category';
+import { Category, CategoryBalance, CategoryBudget, CategoryType, CategoryWithBudget, CreateCategoryDTO, UpdateCategoryDTO } from '../../types/category';
 import { supabase } from '../supabase';
 
 export const CategoryAPI = {
@@ -57,7 +57,7 @@ export const CategoryAPI = {
   },
 
   /**
-   * Listar categorias com informações de orçamento
+   * Listar categorias com informações de orçamento e saldo
    */
   getCategoriesWithBudget: async (type?: CategoryType): Promise<ApiResponse<CategoryWithBudget[]>> => {
     try {
@@ -83,6 +83,12 @@ export const CategoryAPI = {
             spent_amount,
             year,
             month
+          ),
+          category_balances!left (
+            id,
+            balance_amount,
+            year,
+            month
           )
         `)
         .eq('user_id', user.id)
@@ -103,22 +109,33 @@ export const CategoryAPI = {
         };
       }
 
-      // Processar dados e calcular informações de orçamento
+      // Processar dados e calcular informações de orçamento e saldo
       const categoriesWithBudget: CategoryWithBudget[] = (data as any[]).map((cat) => {
         const currentBudget = cat.category_budgets?.find(
+          (b: any) => b.year === currentYear && b.month === currentMonth
+        );
+
+        const currentBalanceRecord = cat.category_balances?.find(
           (b: any) => b.year === currentYear && b.month === currentMonth
         );
 
         const category: CategoryWithBudget = {
           ...cat,
           category_budgets: undefined, // Remover do objeto final
+          category_balances: undefined, // Remover do objeto final
         };
 
-        if (currentBudget) {
+        // Para categorias de despesa com orçamento
+        if (cat.type === 'expense' && currentBudget) {
           category.current_budget = currentBudget;
           category.spent_amount = currentBudget.spent_amount || 0;
           category.remaining_amount = currentBudget.budget_amount - (currentBudget.spent_amount || 0);
           category.budget_percentage = ((currentBudget.spent_amount || 0) / currentBudget.budget_amount) * 100;
+        }
+
+        // Para categorias de receita
+        if (cat.type === 'income' && currentBalanceRecord) {
+          category.current_balance_record = currentBalanceRecord;
         }
 
         return category;
@@ -191,6 +208,7 @@ export const CategoryAPI = {
           icon: data.icon,
           color: data.color,
           monthly_budget: data.type === 'expense' ? data.monthly_budget : null,
+          current_balance: 0, // Sempre iniciar com saldo 0
         })
         .select()
         .single();
@@ -280,6 +298,59 @@ export const CategoryAPI = {
   },
 
   /**
+   * Atualizar saldo de uma categoria (usado ao criar transação)
+   */
+  updateCategoryBalance: async (
+    categoryId: string,
+    amount: number,
+    operation: 'add' | 'subtract'
+  ): Promise<ApiResponse<void>> => {
+    try {
+      const { data: category, error: fetchError } = await supabase
+        .from('categories')
+        .select('current_balance')
+        .eq('id', categoryId)
+        .single();
+
+      if (fetchError || !category) {
+        return {
+          success: false,
+          error: 'Categoria não encontrada',
+        };
+      }
+
+      const currentBalance = category.current_balance || 0;
+      const newBalance =
+        operation === 'add'
+          ? currentBalance + amount
+          : currentBalance - amount;
+
+      const { error: updateError } = await supabase
+        .from('categories')
+        .update({ current_balance: newBalance })
+        .eq('id', categoryId);
+
+      if (updateError) {
+        console.error('Update category balance error:', updateError);
+        return {
+          success: false,
+          error: 'Erro ao atualizar saldo da categoria',
+        };
+      }
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error('Update category balance error:', error);
+      return {
+        success: false,
+        error: 'Erro ao atualizar saldo',
+      };
+    }
+  },
+
+  /**
    * Obter orçamento de uma categoria para o mês atual
    */
   getCurrentBudget: async (categoryId: string): Promise<ApiResponse<CategoryBudget>> => {
@@ -312,6 +383,43 @@ export const CategoryAPI = {
       return {
         success: false,
         error: 'Erro ao buscar orçamento',
+      };
+    }
+  },
+
+  /**
+   * Obter saldo de uma categoria para o mês atual
+   */
+  getCurrentBalance: async (categoryId: string): Promise<ApiResponse<CategoryBalance>> => {
+    try {
+      const currentYear = new Date().getFullYear();
+      const currentMonth = new Date().getMonth() + 1;
+
+      const { data: balance, error } = await supabase
+        .from('category_balances')
+        .select('*')
+        .eq('category_id', categoryId)
+        .eq('year', currentYear)
+        .eq('month', currentMonth)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Get current balance error:', error);
+        return {
+          success: false,
+          error: 'Erro ao buscar saldo',
+        };
+      }
+
+      return {
+        success: true,
+        data: balance as CategoryBalance,
+      };
+    } catch (error) {
+      console.error('Get current balance error:', error);
+      return {
+        success: false,
+        error: 'Erro ao buscar saldo',
       };
     }
   },

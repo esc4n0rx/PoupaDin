@@ -5,14 +5,14 @@ import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { Category, CategoryType, CreateCategoryDTO, UpdateCategoryDTO } from '@/types/category';
 import React, { useEffect, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Button } from '../ui/Button';
 import { ColorPicker } from '../ui/ColorPicker';
@@ -21,14 +21,9 @@ import { IconPicker } from '../ui/IconPicker';
 import { Input } from '../ui/Input';
 import { Toast } from '../ui/Toast';
 
-// --- Início das Correções ---
-
-// 1. Inferir tipos literais das constantes importadas
-// (Assume-se que as constantes são exportadas com `as const`)
 type CategoryColor = typeof CATEGORY_COLORS[number];
 type CategoryIcon = typeof CATEGORY_ICONS[keyof typeof CATEGORY_ICONS][number];
 
-// 2. Definir interface para o estado do formulário
 interface FormDataState {
   name: string;
   type: CategoryType;
@@ -36,8 +31,6 @@ interface FormDataState {
   color: CategoryColor;
   monthly_budget: string;
 }
-
-// --- Fim das Correções Iniciais ---
 
 interface CategoryModalProps {
   visible: boolean;
@@ -58,7 +51,6 @@ export function CategoryModal({
   const colors = Colors[colorScheme];
   const isEditing = !!category;
 
-  // 3. Aplicar a interface FormDataState ao useState
   const [formData, setFormData] = useState<FormDataState>({
     name: '',
     type: initialType,
@@ -67,8 +59,7 @@ export function CategoryModal({
     monthly_budget: '',
   });
 
-  // 4. Corrigir tipo do estado de 'errors' (Erro 3)
-  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{
     visible: boolean;
@@ -83,17 +74,14 @@ export function CategoryModal({
   useEffect(() => {
     if (visible) {
       if (category) {
-        // Modo edição - preencher com dados existentes
-        // 5. Aplicar type assertion para 'icon' e 'color' (Erro 1 e 2)
         setFormData({
           name: category.name,
           type: category.type,
-          icon: category.icon as CategoryIcon, // Correção
-          color: category.color as CategoryColor, // Correção
+          icon: category.icon as CategoryIcon,
+          color: category.color as CategoryColor,
           monthly_budget: category.monthly_budget?.toString() || '',
         });
       } else {
-        // Modo criação - resetar formulário
         setFormData({
           name: '',
           type: initialType,
@@ -106,14 +94,9 @@ export function CategoryModal({
     }
   }, [visible, category, initialType]);
 
-  // 6. Melhorar tipagem de 'updateField'
-  const updateField = (
-    field: keyof FormDataState,
-    value: FormDataState[keyof FormDataState]
-  ) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    // Esta linha agora é válida graças à correção no useState de 'errors' (Erro 3)
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
+  const updateField = (field: string, value: any) => {
+    setFormData({ ...formData, [field]: value });
+   setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
   const handleTypeChange = (type: CategoryType) => {
@@ -166,8 +149,7 @@ export function CategoryModal({
 
       let response;
       if (isEditing) {
-        // Adicionado '!' pois 'isEditing' garante que 'category' existe
-        response = await CategoryAPI.updateCategory(category!.id, categoryData);
+        response = await CategoryAPI.updateCategory(category.id, categoryData);
       } else {
         response = await CategoryAPI.createCategory({
           ...categoryData,
@@ -351,6 +333,22 @@ export function CategoryModal({
               </View>
             )}
 
+            {/* Informativo sobre saldo inicial */}
+            {!isEditing && (
+              <View style={[styles.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+                <IconSymbol
+                  name="info.circle.fill"
+                  size={20}
+                  color={colors.primary}
+                />
+                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                  {formData.type === 'income'
+                    ? 'O saldo inicial será R$ 0,00 e será atualizado conforme você registra receitas.'
+                    : 'Os gastos começam em R$ 0,00 e serão atualizados conforme você registra despesas.'}
+                </Text>
+              </View>
+            )}
+
             {/* Nome */}
             <View style={styles.section}>
               <Input
@@ -402,7 +400,30 @@ export function CategoryModal({
                   }
                 />
                 <Text style={[styles.helperText, { color: colors.textSecondary }]}>
-                  Defina um limite de gastos mensal para esta categoria
+                  Defina um limite de gastos mensal para esta categoria. O valor será resetado automaticamente no início de cada mês.
+                </Text>
+              </View>
+            )}
+
+            {/* Informação sobre saldo atual (apenas na edição) */}
+            {isEditing && category && (
+              <View style={[styles.currentBalanceBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+                <View style={styles.currentBalanceHeader}>
+                  <Text style={[styles.currentBalanceLabel, { color: colors.text }]}>
+                    {category.type === 'income' ? 'Saldo Atual do Mês' : 'Gasto Atual do Mês'}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.currentBalanceValue,
+                      {
+                        color: category.type === 'income' ? colors.success : colors.error,
+                      },
+                    ]}>
+                    R$ {category.current_balance.toFixed(2)}
+                  </Text>
+                </View>
+                <Text style={[styles.currentBalanceHelper, { color: colors.textSecondary }]}>
+                  Este valor será resetado automaticamente no início do próximo mês
                 </Text>
               </View>
             )}
@@ -422,8 +443,7 @@ export function CategoryModal({
                   onPress={handleDelete}
                   variant="outline"
                   disabled={isLoading}
-                  // 7. Correção (Erro 4): Usar StyleSheet.flatten
-                  style={StyleSheet.flatten([
+                 style={StyleSheet.flatten([
                     styles.deleteButton,
                     { borderColor: colors.error },
                   ])}
@@ -500,6 +520,20 @@ const styles = StyleSheet.create({
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semiBold,
   },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: Spacing.md,
+    borderRadius: BorderRadius.base,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
+    gap: Spacing.sm,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: Typography.fontSize.sm,
+    lineHeight: Typography.lineHeight.base,
+  },
   currencySymbol: {
     fontSize: Typography.fontSize.base,
     fontWeight: Typography.fontWeight.semiBold,
@@ -507,6 +541,30 @@ const styles = StyleSheet.create({
   helperText: {
     fontSize: Typography.fontSize.xs,
     marginTop: Spacing.xs,
+    lineHeight: Typography.lineHeight.sm,
+  },
+  currentBalanceBox: {
+    padding: Spacing.base,
+    borderRadius: BorderRadius.base,
+    borderWidth: 1,
+    marginBottom: Spacing.lg,
+  },
+  currentBalanceHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.xs,
+  },
+  currentBalanceLabel: {
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.medium,
+  },
+  currentBalanceValue: {
+    fontSize: Typography.fontSize.xl,
+    fontWeight: Typography.fontWeight.bold,
+  },
+  currentBalanceHelper: {
+    fontSize: Typography.fontSize.xs,
     lineHeight: Typography.lineHeight.sm,
   },
   buttonsContainer: {
