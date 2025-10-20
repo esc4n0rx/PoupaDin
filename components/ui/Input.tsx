@@ -17,6 +17,7 @@ interface InputProps extends TextInputProps {
   rightIcon?: any;
   onRightIconPress?: () => void;
   containerStyle?: any;
+  leftElement?: React.ReactNode;
 }
 
 export function Input({
@@ -26,6 +27,7 @@ export function Input({
   rightIcon,
   onRightIconPress,
   containerStyle,
+  leftElement,
   style,
   ...textInputProps
 }: InputProps) {
@@ -50,6 +52,7 @@ export function Input({
         {leftIcon && (
           <View style={styles.leftIconContainer}>{leftIcon}</View>
         )}
+        {leftElement}
         
         <TextInput
           style={[

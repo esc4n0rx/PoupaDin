@@ -3,7 +3,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { CategoryAPI } from '@/services/api/category';
 import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { Category, CategoryType, CreateCategoryDTO, UpdateCategoryDTO } from '@/types/category';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Modal,
@@ -94,10 +94,16 @@ export function CategoryModal({
     }
   }, [visible, category, initialType]);
 
-  const updateField = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
-   setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
+ const updateField = useCallback((field: string, value: any) => {
+     setFormData((prev) => ({ ...prev, [field]: value }));
+     if (errors[field]) {
+       setErrors((prev) => {
+         const newErrors = { ...prev };
+         delete newErrors[field];
+         return newErrors;
+       });
+     }
+   }, [errors]);
 
   const handleTypeChange = (type: CategoryType) => {
     setFormData({

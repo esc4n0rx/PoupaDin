@@ -5,16 +5,16 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { GoalAPI } from '@/services/api/goal';
 import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { CreateGoalDTO, Goal, UpdateGoalDTO } from '@/types/goal';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { Button } from '../ui/Button';
 import { ColorPicker } from '../ui/ColorPicker';
@@ -109,12 +109,18 @@ export function GoalModal({
     }
   }, [visible, goal]);
 
-  const updateField = (field: string, value: any) => {
-    setFormData({ ...formData, [field]: value });
-    setErrors((prev) => ({ ...prev, [field]: undefined }));
-  };
+  const updateField = useCallback((field: string, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[field];
+        return newErrors;
+      });
+    }
+  }, [errors]);
 
-  const validate = (): boolean => {
+  const validate = useCallback((): boolean => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.name.trim()) {
@@ -138,7 +144,7 @@ export function GoalModal({
       const deadline = new Date(formData.deadline);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       if (deadline < today) {
         newErrors.deadline = 'Prazo não pode ser no passado';
       }
@@ -146,9 +152,9 @@ export function GoalModal({
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [formData]);
 
-  const handleSubmit = async () => {
+  const handleSubmit = useCallback(async () => {
     if (!validate()) return;
 
     setIsLoading(true);
@@ -164,7 +170,7 @@ export function GoalModal({
       };
 
       let response;
-      if (isEditing) {
+      if (isEditing && goal) {
         response = await GoalAPI.updateGoal(goal.id, goalData);
       } else {
         response = await GoalAPI.createGoal(goalData as CreateGoalDTO);
@@ -199,9 +205,9 @@ export function GoalModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [validate, formData, isEditing, goal, onSuccess, onClose]);
 
-  const handleDelete = async () => {
+  const handleDelete = useCallback(async () => {
     if (!goal) return;
 
     setIsLoading(true);
@@ -235,7 +241,12 @@ export function GoalModal({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [goal, onSuccess, onClose]);
+
+  const headerTitle = useMemo(
+    () => (isEditing ? 'Editar Objetivo' : 'Novo Objetivo'),
+    [isEditing]
+  );
 
   return (
     <Modal
@@ -253,7 +264,7 @@ export function GoalModal({
               <IconSymbol name="chevron.right" size={24} color={colors.text} style={{ transform: [{ rotate: '180deg' }] }} />
             </TouchableOpacity>
             <Text style={[styles.headerTitle, { color: colors.text }]}>
-              {isEditing ? 'Editar Objetivo' : 'Novo Objetivo'}
+              {headerTitle}
             </Text>
             <View style={styles.closeButton} />
           </View>
@@ -262,7 +273,7 @@ export function GoalModal({
             contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled">
-            
+
             {/* Nome */}
             <View style={styles.section}>
               <Input
@@ -330,7 +341,7 @@ export function GoalModal({
                 contentContainerStyle={styles.iconsContainer}>
                 {GOAL_ICONS.map((icon) => {
                   const isSelected = formData.icon === icon;
-                  
+
                   return (
                     <TouchableOpacity
                       key={icon}
