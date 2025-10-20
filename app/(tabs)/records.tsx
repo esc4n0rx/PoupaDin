@@ -1,5 +1,3 @@
-// app/(tabs)/records.tsx
-
 import { GoalCarousel } from '@/components/goal/GoalCarousel';
 import { DaySelector } from '@/components/navigation/DaySelector';
 import { ThemedView } from '@/components/themed-view';
@@ -37,12 +35,10 @@ export default function RecordsScreen() {
     type: 'success',
   });
 
-  // Carregar objetivos ao montar o componente
   useEffect(() => {
     loadGoals();
   }, []);
 
-  // Carregar transações quando a data mudar
   useEffect(() => {
     loadTransactions();
   }, [selectedDate]);
@@ -151,13 +147,10 @@ export default function RecordsScreen() {
             tintColor={colors.primary}
           />
         }>
-        {/* Carrossel de Objetivos */}
         <GoalCarousel goals={goals} />
 
-        {/* Resumo do Dia */}
         {summary && summary.transactions_count > 0 && <DaySummary summary={summary} />}
 
-        {/* Lista de Transações */}
         {transactions.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>

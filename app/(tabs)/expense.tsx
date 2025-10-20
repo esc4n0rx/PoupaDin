@@ -1,6 +1,6 @@
-import { DaySelector } from '@/components/navigation/DaySelector';
 import { ExpenseModal } from '@/components/modals/ExpenseModal';
 import { IncomeModal } from '@/components/modals/IncomeModal';
+import { DaySelector } from '@/components/navigation/DaySelector';
 import { ThemedView } from '@/components/themed-view';
 import { DaySummary } from '@/components/transaction/DaySummary';
 import { TransactionCard } from '@/components/transaction/TransactionCard';
@@ -157,10 +157,10 @@ export default function ExpenseScreen() {
         },
         (buttonIndex) => {
           if (buttonIndex === 1) {
-            // Editar
+
             console.log('Edit:', transaction.id);
           } else if (buttonIndex === 2) {
-            // Deletar
+
             handleDeleteTransaction(transaction.id);
           }
         }
@@ -236,12 +236,10 @@ export default function ExpenseScreen() {
           />
         }
       >
-        {/* Resumo do Dia */}
         {summary && summary.transactions_count > 0 && (
           <DaySummary summary={summary} />
         )}
 
-        {/* Lista de Transações */}
         {transactions.length === 0 ? (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: colors.textSecondary }]}>

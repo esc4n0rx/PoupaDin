@@ -5,13 +5,13 @@ import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { router } from 'expo-router';
 import React, { useEffect } from 'react';
 import {
-    Animated,
-    Dimensions,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Animated,
+  Dimensions,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { IconSymbol } from '../ui/icon-symbol';
 
@@ -75,7 +75,6 @@ export function Sidebar() {
       transparent
       animationType="none"
       onRequestClose={closeSidebar}>
-      {/* Overlay */}
       <TouchableOpacity
         style={styles.overlay}
         activeOpacity={1}
@@ -88,7 +87,6 @@ export function Sidebar() {
               transform: [{ translateX }],
             },
           ]}>
-          {/* Header com perfil */}
           <TouchableOpacity
             style={[styles.profileSection, { borderBottomColor: colors.border }]}
             onPress={() => {
@@ -112,7 +110,6 @@ export function Sidebar() {
             <IconSymbol name="chevron.right" size={20} color={colors.textSecondary} />
           </TouchableOpacity>
 
-          {/* Menu Gerenciamento */}
           <View style={styles.menuSection}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               Gerenciamento
@@ -122,7 +119,6 @@ export function Sidebar() {
             <MenuItem icon="house.fill" label="Resetar e Apagar" />
           </View>
 
-          {/* Menu Aplicação */}
           <View style={styles.menuSection}>
             <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
               PoupaDin
@@ -132,7 +128,6 @@ export function Sidebar() {
             <MenuItem icon="paperplane.fill" label="Convidar Amigos" />
           </View>
 
-          {/* Botão Sair */}
           <TouchableOpacity
             style={[styles.logoutButton, { backgroundColor: colors.error }]}
             onPress={handleLogout}

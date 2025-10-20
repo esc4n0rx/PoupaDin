@@ -1,5 +1,3 @@
-// app/(tabs)/categories.tsx
-
 import { CategoryCard } from '@/components/category/CategoryCard';
 import { CategoryModal } from '@/components/modals/CategoryModal';
 import { ThemedView } from '@/components/themed-view';
@@ -97,7 +95,6 @@ export default function CategoriesScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Tabs */}
       <View style={[styles.tabsContainer, { borderBottomColor: colors.border }]}>
         <TouchableOpacity
           style={[

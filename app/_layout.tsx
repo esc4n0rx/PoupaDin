@@ -20,12 +20,10 @@ function RootLayoutNav() {
     const inWelcome = segments[0] === 'welcome';
 
     if (isAuthenticated) {
-      // Usuário autenticado - redirecionar para tabs se não estiver lá
       if (!inTabsGroup) {
         router.replace('/records');
       }
     } else {
-      // Usuário não autenticado - redirecionar para welcome/auth
       if (inTabsGroup) {
         router.replace('/welcome');
       }

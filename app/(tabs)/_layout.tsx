@@ -69,10 +69,8 @@ function TabsLayout() {
             marginTop: 2,
           },
           header: () => null,
-          // Animações suaves
           animation: 'shift',
           lazy: true,
-          // Para iOS
           ...(Platform.OS === 'ios' && {
             animationEnabled: true,
             animationDuration: 200,

@@ -1,5 +1,3 @@
-// app/(tabs)/goals.tsx
-
 import { GoalCard } from '@/components/goal/GoalCard';
 import { AddBalanceModal } from '@/components/modals/AddBalanceModal';
 import { GoalModal } from '@/components/modals/GoalModal';
@@ -88,8 +86,6 @@ export default function GoalsScreen() {
   };
 
   const handleGoalPress = (goal: Goal) => {
-    // Tap simples - não faz nada por enquanto
-    // O menu é aberto apenas com long press
   };
 
   const handleGoalLongPress = (goal: Goal) => {
@@ -177,7 +173,6 @@ export default function GoalsScreen() {
     loadGoals(true);
   };
 
-  // Separar objetivos concluídos e em progresso
   const activeGoals = goals.filter((g) => !g.is_completed);
   const completedGoals = goals.filter((g) => g.is_completed);
 
@@ -208,7 +203,6 @@ export default function GoalsScreen() {
           </View>
         ) : (
           <>
-            {/* Objetivos em Progresso */}
             {activeGoals.length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>
@@ -225,7 +219,6 @@ export default function GoalsScreen() {
               </View>
             )}
 
-            {/* Objetivos Concluídos */}
             {completedGoals.length > 0 && (
               <View style={styles.section}>
                 <Text style={[styles.sectionTitle, { color: colors.text }]}>

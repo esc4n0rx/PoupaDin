@@ -3,6 +3,7 @@
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { AnalyticsViewType } from '@/types/analytics';
+import { SymbolViewProps } from 'expo-symbols';
 import React, { useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { IconSymbol } from '../ui/icon-symbol';
@@ -12,7 +13,7 @@ interface AnalyticsSelectorProps {
   onViewChange: (view: AnalyticsViewType) => void;
 }
 
-const VIEW_OPTIONS: { value: AnalyticsViewType; label: string; icon: string }[] = [
+const VIEW_OPTIONS: { value: AnalyticsViewType; label: string; icon: SymbolViewProps['name'] }[] = [
   { value: 'income_flow', label: 'Flow de Receitas', icon: 'arrow.up.circle.fill' },
   { value: 'expense_flow', label: 'Flow de Despesas', icon: 'arrow.down.circle.fill' },
   { value: 'income_overview', label: 'Overview de Receitas', icon: 'chart.pie.fill' },

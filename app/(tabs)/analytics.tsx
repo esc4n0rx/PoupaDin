@@ -1,5 +1,3 @@
-// app/(tabs)/analytics.tsx
-
 import { AnalyticsSelector } from '@/components/analytics/AnalyticsSelector';
 import { FlowChart } from '@/components/analytics/FlowChart';
 import { MonthYearSelector } from '@/components/analytics/MonthYearSelector';
