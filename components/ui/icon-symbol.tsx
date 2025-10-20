@@ -1,3 +1,5 @@
+// components/ui/icon-symbol.tsx
+
 // Fallback for using MaterialIcons on Android and web.
 
 import MaterialIcons from '@expo/vector-icons/MaterialIcons';
@@ -20,9 +22,9 @@ const MAPPING = {
   'chevron.right': 'chevron-right',
   'chart.bar.fill': 'bar-chart',
   'creditcard.fill': 'credit-card',
-  'target': 'track-changes',
+  target: 'track-changes',
   'list.bullet': 'list',
-  'magnifyingglass': 'search',
+  magnifyingglass: 'search',
   'bell.fill': 'notifications',
   'line.3.horizontal': 'menu',
   'person.fill': 'person',
@@ -32,7 +34,11 @@ const MAPPING = {
   'heart.fill': 'favorite',
   'message.fill': 'message',
   'person.3.fill': 'group',
-  'plus': 'add',
+  plus: 'add',
+  'clock.fill': 'schedule',
+  'checkmark.circle.fill': 'check-circle',
+  'exclamationmark.triangle.fill': 'warning',
+  calendar: 'calendar-today',
 } as IconMapping;
 
 /**
