@@ -1,13 +1,13 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ThemedView } from '../../components/themed-view';
 import { Button } from '../../components/ui/Button';
@@ -42,11 +42,18 @@ export default function RegisterScreen() {
     type: 'success',
   });
 
-  const updateField = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
-    setErrors({ ...errors, [field]: undefined });
-  };
+  const updateField = useCallback((field: string, value: any) => {
+       setFormData((prev) => ({ ...prev, [field]: value }));
+       if (errors[field]) {
+         setErrors((prev) => {
+           const newErrors = { ...prev };
+           delete newErrors[field];
+           return newErrors;
+         });
+       }
+     }, [errors]);
 
+     
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 

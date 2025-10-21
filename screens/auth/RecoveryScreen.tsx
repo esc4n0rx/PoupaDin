@@ -1,78 +1,76 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { ThemedView } from '../../components/themed-view';
 import { Button } from '../../components/ui/Button';
-import { CodeInput } from '../../components/ui/CodeInput';
 import { IconSymbol } from '../../components/ui/icon-symbol';
 import { Input } from '../../components/ui/Input';
 import { Toast } from '../../components/ui/Toast';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { AuthAPI } from '../../services/api/auth';
-import { Colors, Spacing, Typography } from '../../theme';
+import { BorderRadius, Colors, Spacing, Typography } from '../../theme';
 import { Validation } from '../../utils/validation';
-
-type Step = 'email' | 'code' | 'password';
 
 export default function RecoveryScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
 
-  const [currentStep, setCurrentStep] = useState<Step>('email');
   const [email, setEmail] = useState('');
-  const [code, setCode] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<{ email?: string }>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
   const [toast, setToast] = useState<{ visible: boolean; message: string; type: 'success' | 'error' }>({
     visible: false,
     message: '',
     type: 'success',
   });
 
-  const handleRequestCode = async () => {
+  const validate = (): boolean => {
+    const newErrors: { email?: string } = {};
+
     if (!email) {
-      setErrors({ email: 'E-mail é obrigatório' });
-      return;
+      newErrors.email = 'E-mail é obrigatório';
+    } else if (!Validation.email(email)) {
+      newErrors.email = 'E-mail inválido';
     }
-    if (!Validation.email(email)) {
-      setErrors({ email: 'E-mail inválido' });
-      return;
-    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleRequestRecovery = async () => {
+    if (!validate()) return;
 
     setIsLoading(true);
     try {
-      const response = await AuthAPI.requestRecovery({ email });
+      const result = await AuthAPI.requestRecovery({ email });
 
-      if (response.success) {
+      if (result.success) {
+        setEmailSent(true);
         setToast({
           visible: true,
-          message: 'Código enviado para seu e-mail!',
+          message: 'E-mail de recuperação enviado com sucesso!',
           type: 'success',
         });
-        setCurrentStep('code');
       } else {
         setToast({
           visible: true,
-          message: response.error || 'Erro ao enviar código',
+          message: result.error || 'Erro ao enviar e-mail',
           type: 'error',
         });
       }
     } catch (error) {
       setToast({
         visible: true,
-        message: 'Erro ao enviar código. Tente novamente.',
+        message: 'Erro ao enviar e-mail. Tente novamente.',
         type: 'error',
       });
     } finally {
@@ -80,237 +78,13 @@ export default function RecoveryScreen() {
     }
   };
 
-  const handleVerifyCode = async (verificationCode: string) => {
-    setCode(verificationCode);
-    setIsLoading(true);
-
-    try {
-      const response = await AuthAPI.verifyRecoveryCode({
-        email,
-        code: verificationCode,
-      });
-
-      if (response.success) {
-        setToast({
-          visible: true,
-          message: 'Código verificado!',
-          type: 'success',
-        });
-        setCurrentStep('password');
-      } else {
-        setToast({
-          visible: true,
-          message: response.error || 'Código inválido',
-          type: 'error',
-        });
-        setCode('');
-      }
-    } catch (error) {
-      setToast({
-        visible: true,
-        message: 'Erro ao verificar código. Tente novamente.',
-        type: 'error',
-      });
-      setCode('');
-    } finally {
-      setIsLoading(false);
-    }
+  const handleBackToLogin = () => {
+    router.back();
   };
 
-  const handleResetPassword = async () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!newPassword) {
-      newErrors.newPassword = 'Nova senha é obrigatória';
-    } else {
-      const passwordValidation = Validation.password(newPassword);
-      if (!passwordValidation.valid) {
-        newErrors.newPassword = passwordValidation.message || 'Senha inválida';
-      }
-    }
-
-    if (!confirmPassword) {
-      newErrors.confirmPassword = 'Confirme sua nova senha';
-    } else if (newPassword !== confirmPassword) {
-      newErrors.confirmPassword = 'As senhas não coincidem';
-    }
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await AuthAPI.resetPassword({
-        email,
-        code,
-        new_password: newPassword,
-      });
-
-      if (response.success) {
-        setToast({
-          visible: true,
-          message: 'Senha alterada com sucesso!',
-          type: 'success',
-        });
-        
-        setTimeout(() => {
-          router.replace('/auth/login');
-        }, 2000);
-      } else {
-        setToast({
-          visible: true,
-          message: response.error || 'Erro ao resetar senha',
-          type: 'error',
-        });
-      }
-    } catch (error) {
-      setToast({
-        visible: true,
-        message: 'Erro ao resetar senha. Tente novamente.',
-        type: 'error',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleBack = () => {
-    if (currentStep === 'email') {
-      router.back();
-    } else if (currentStep === 'code') {
-      setCurrentStep('email');
-      setCode('');
-    } else {
-      setCurrentStep('code');
-      setNewPassword('');
-      setConfirmPassword('');
-    }
-  };
-
-  const renderStepContent = () => {
-    switch (currentStep) {
-      case 'email':
-        return (
-          <>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Recuperar senha
-            </Text>
-            <Text style={[styles.description, { color: colors.textSecondary }]}>
-              Digite seu e-mail para receber um código de verificação
-            </Text>
-
-            <Input
-              label="E-mail"
-              placeholder="exemplo@email.com"
-              value={email}
-              onChangeText={(text) => {
-                setEmail(text);
-                setErrors({});
-              }}
-              error={errors.email}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-
-            <Button
-              title="Enviar código"
-              onPress={handleRequestCode}
-              loading={isLoading}
-              disabled={isLoading}
-            />
-          </>
-        );
-
-      case 'code':
-        return (
-          <>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Digite o código
-            </Text>
-            <Text style={[styles.description, { color: colors.textSecondary }]}>
-              Enviamos um código de 6 dígitos para {email}
-            </Text>
-            <View style={styles.codeContainer}>
-              <CodeInput
-                length={6}
-                onComplete={handleVerifyCode}
-                error={errors.code}
-              />
-            </View>
-
-            <TouchableOpacity
-              onPress={handleRequestCode}
-              style={styles.resendButton}
-              disabled={isLoading}>
-              <Text style={[styles.resendText, { color: colors.primary }]}>
-                Reenviar código
-              </Text>
-            </TouchableOpacity>
-          </>
-        );
-
-      case 'password':
-        return (
-          <>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Nova senha
-            </Text>
-            <Text style={[styles.description, { color: colors.textSecondary }]}>
-              Crie uma nova senha segura para sua conta
-            </Text>
-
-            <Input
-              label="Nova senha"
-              placeholder="Mínimo 6 caracteres"
-              value={newPassword}
-              onChangeText={(text) => {
-                setNewPassword(text);
-                setErrors({ ...errors, newPassword: undefined });
-              }}
-              error={errors.newPassword}
-              secureTextEntry={!showPassword}
-              rightIcon={
-                <IconSymbol
-                  name="chevron.right"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              }
-              onRightIconPress={() => setShowPassword(!showPassword)}
-            />
-
-            <Input
-              label="Confirmar senha"
-              placeholder="Digite a senha novamente"
-              value={confirmPassword}
-              onChangeText={(text) => {
-                setConfirmPassword(text);
-                setErrors({ ...errors, confirmPassword: undefined });
-              }}
-              error={errors.confirmPassword}
-              secureTextEntry={!showConfirmPassword}
-              rightIcon={
-                <IconSymbol
-                  name="chevron.right"
-                  size={20}
-                  color={colors.textSecondary}
-                />
-              }
-              onRightIconPress={() => setShowConfirmPassword(!showConfirmPassword)}
-            />
-
-            <Button
-              title="Alterar senha"
-              onPress={handleResetPassword}
-              loading={isLoading}
-              disabled={isLoading}
-            />
-          </>
-        );
-    }
+  const handleResendEmail = () => {
+    setEmailSent(false);
+    handleRequestRecovery();
   };
 
   return (
@@ -322,88 +96,224 @@ export default function RecoveryScreen() {
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
-          {/* Back Button */}
-          <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-            <IconSymbol
-              name="chevron.right"
-              size={24}
-              color={colors.text}
-              style={{ transform: [{ rotate: '180deg' }] }}
-            />
+          {/* Header com botão voltar */}
+          <TouchableOpacity
+            onPress={handleBackToLogin}
+            style={styles.backButton}
+            activeOpacity={0.7}>
+            <IconSymbol name="chevron.right" size={24} color={colors.text} />
           </TouchableOpacity>
 
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={[styles.logo, { color: colors.text }]}>PoupaDin</Text>
+          {!emailSent ? (
+            // Formulário de solicitação
+            <>
+              <View style={styles.header}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.primary + '20' }]}>
+                  <IconSymbol name="paperplane.fill" size={48} color={colors.primary} />
+                </View>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  Recuperar Senha
+                </Text>
+                <Text style={[styles.description, { color: colors.textSecondary }]}>
+                  Digite seu e-mail e enviaremos um link para você redefinir sua senha
+                </Text>
+              </View>
+
+              <View style={styles.form}>
+                <Input
+                  label="E-mail"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChangeText={(text) => {
+                    setEmail(text);
+                    setErrors({});
+                  }}
+                  error={errors.email}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  leftIcon={
+                    <IconSymbol name="paperplane.fill" size={20} color={colors.textSecondary} />
+                  }
+                />
+
+                <Button
+                  title="Enviar Link de Recuperação"
+                  onPress={handleRequestRecovery}
+                  loading={isLoading}
+                  disabled={isLoading}
+                  style={styles.submitButton}
+                />
+
+                <TouchableOpacity
+                  onPress={handleBackToLogin}
+                  style={styles.backToLoginButton}
+                  activeOpacity={0.7}>
+                  <Text style={[styles.backToLoginText, { color: colors.textSecondary }]}>
+                    Lembrou sua senha?{' '}
+                    <Text style={{ color: colors.primary, fontWeight: Typography.fontWeight.semiBold }}>
+                      Fazer login
+                    </Text>
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </>
+          ) : (
+            // Confirmação de envio
+            <>
+              <View style={styles.header}>
+                <View style={[styles.iconContainer, { backgroundColor: colors.success + '20' }]}>
+                  <IconSymbol name="checkmark.circle.fill" size={48} color={colors.success} />
+                </View>
+                <Text style={[styles.title, { color: colors.text }]}>
+                  E-mail Enviado!
+                </Text>
+                <Text style={[styles.description, { color: colors.textSecondary }]}>
+                  Enviamos um link de recuperação para:
+                </Text>
+                <Text style={[styles.emailText, { color: colors.primary }]}>
+                  {email}
+                </Text>
+              </View>
+
+              <View style={[styles.infoBox, { backgroundColor: colors.backgroundSecondary, borderColor: colors.border }]}>
+                <View style={styles.infoItem}>
+                  <IconSymbol name="clock.fill" size={20} color={colors.primary} />
+                  <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    O link expira em 1 hora
+                  </Text>
+                </View>
+                <View style={styles.infoItem}>
+                  <IconSymbol name="paperplane.fill" size={20} color={colors.primary} />
+                <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                    Verifique sua caixa de entrada e spam
+                </Text>
+                  </View>
+                  <View style={styles.infoItem}>
+                    <IconSymbol name="checkmark.circle.fill" size={20} color={colors.primary} />
+                      <Text style={[styles.infoText, { color: colors.textSecondary }]}>
+                        Clique no link para redefinir sua senha
+                      </Text>
+                    </View>
+                  </View>          
+          <View style={styles.actions}>
+            <Button
+              title="Voltar para Login"
+              onPress={handleBackToLogin}
+              variant="primary"
+              style={styles.actionButton}
+            />            <TouchableOpacity
+              onPress={handleResendEmail}
+              style={styles.resendButton}
+              disabled={isLoading}
+              activeOpacity={0.7}>
+              <Text style={[styles.resendText, { color: colors.primary }]}>
+                Não recebeu o e-mail? Reenviar
+              </Text>
+            </TouchableOpacity>
           </View>
-
-          {/* Form */}
-          <View style={styles.form}>
-            {renderStepContent()}
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-
-      <Toast
-        visible={toast.visible}
-        message={toast.message}
-        type={toast.type}
-        onHide={() => setToast({ ...toast, visible: false })}
-      />
-    </ThemedView>
-  );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing['2xl'],
-    paddingBottom: Spacing.xl,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    marginBottom: Spacing.lg,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: Spacing['3xl'],
-  },
-  logo: {
-    fontSize: Typography.fontSize['4xl'],
-    fontWeight: Typography.fontWeight.bold,
-  },
-  form: {
-    flex: 1,
-  },
-  title: {
-    fontSize: Typography.fontSize['2xl'],
-    fontWeight: Typography.fontWeight.bold,
-    marginBottom: Spacing.md,
-  },
-  description: {
-    fontSize: Typography.fontSize.base,
-    lineHeight: Typography.lineHeight.lg,
-    marginBottom: Spacing.xl,
-  },
-  codeContainer: {
-    marginVertical: Spacing.xl,
-  },
-  resendButton: {
-    alignSelf: 'center',
-    marginTop: Spacing.lg,
-    marginBottom: Spacing.xl,
-  },
-  resendText: {
-    fontSize: Typography.fontSize.sm,
-    fontWeight: Typography.fontWeight.semiBold,
-  },
+        </>
+      )}
+    </ScrollView>
+  </KeyboardAvoidingView>
+  <Toast
+    visible={toast.visible}
+    message={toast.message}
+    type={toast.type}
+    onHide={() => setToast({ ...toast, visible: false })}
+  />
+</ThemedView>
+);
+}const styles = StyleSheet.create({
+container: {
+flex: 1,
+},
+keyboardView: {
+flex: 1,
+},
+scrollContent: {
+flexGrow: 1,
+padding: Spacing.xl,
+paddingTop: Spacing['4xl'],
+},
+backButton: {
+width: 40,
+height: 40,
+justifyContent: 'center',
+alignItems: 'flex-start',
+marginBottom: Spacing.lg,
+},
+header: {
+alignItems: 'center',
+marginBottom: Spacing['3xl'],
+},
+iconContainer: {
+width: 96,
+height: 96,
+borderRadius: BorderRadius.full,
+justifyContent: 'center',
+alignItems: 'center',
+marginBottom: Spacing.lg,
+},
+title: {
+fontSize: Typography.fontSize['3xl'],
+fontWeight: Typography.fontWeight.bold,
+marginBottom: Spacing.sm,
+textAlign: 'center',
+},
+description: {
+fontSize: Typography.fontSize.base,
+textAlign: 'center',
+lineHeight: Typography.lineHeight.lg,
+},
+emailText: {
+fontSize: Typography.fontSize.lg,
+fontWeight: Typography.fontWeight.semiBold,
+marginTop: Spacing.sm,
+textAlign: 'center',
+},
+form: {
+gap: Spacing.base,
+},
+submitButton: {
+marginTop: Spacing.lg,
+},
+backToLoginButton: {
+marginTop: Spacing.lg,
+alignItems: 'center',
+},
+backToLoginText: {
+fontSize: Typography.fontSize.base,
+},
+infoBox: {
+padding: Spacing.base,
+borderRadius: BorderRadius.base,
+borderWidth: 1,
+marginBottom: Spacing.xl,
+gap: Spacing.md,
+},
+infoItem: {
+flexDirection: 'row',
+alignItems: 'center',
+gap: Spacing.sm,
+},
+infoText: {
+fontSize: Typography.fontSize.sm,
+flex: 1,
+lineHeight: Typography.lineHeight.base,
+},
+actions: {
+gap: Spacing.base,
+},
+actionButton: {
+marginBottom: Spacing.sm,
+},
+resendButton: {
+padding: Spacing.md,
+alignItems: 'center',
+},
+resendText: {
+fontSize: Typography.fontSize.base,
+fontWeight: Typography.fontWeight.semiBold,
+},
 });
