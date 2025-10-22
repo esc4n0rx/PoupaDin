@@ -3,7 +3,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { BorderRadius, Colors, Spacing, Typography } from '@/theme';
 import { router } from 'expo-router';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -13,6 +13,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { DeleteAccountModal } from '../modals/DeleteAccountModal';
+import { ExportDataModal } from '../modals/ExportDataModal';
+import { RestoreDataModal } from '../modals/RestoreDataModal';
 import { IconSymbol } from '../ui/icon-symbol';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
@@ -24,6 +27,10 @@ export function Sidebar() {
   const { isOpen, closeSidebar } = useSidebar();
   const { user, logout } = useAuth();
   const translateX = React.useRef(new Animated.Value(-SIDEBAR_WIDTH)).current;
+
+  const [exportModalVisible, setExportModalVisible] = useState(false);
+  const [restoreModalVisible, setRestoreModalVisible] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -48,6 +55,21 @@ export function Sidebar() {
     router.replace('/welcome');
   };
 
+  const handleOpenExport = () => {
+    closeSidebar();
+    setExportModalVisible(true);
+  };
+
+  const handleOpenRestore = () => {
+    closeSidebar();
+    setRestoreModalVisible(true);
+  };
+
+  const handleOpenDelete = () => {
+    closeSidebar();
+    setDeleteModalVisible(true);
+  };
+
   const MenuItem = ({
     icon,
     label,
@@ -67,76 +89,105 @@ export function Sidebar() {
     </TouchableOpacity>
   );
 
-  if (!isOpen) return null;
-
   return (
-    <Modal
-      visible={isOpen}
-      transparent
-      animationType="none"
-      onRequestClose={closeSidebar}>
-      <TouchableOpacity
-        style={styles.overlay}
-        activeOpacity={1}
-        onPress={closeSidebar}>
-        <Animated.View
-          style={[
-            styles.sidebar,
-            {
-              backgroundColor: colors.backgroundSecondary,
-              transform: [{ translateX }],
-            },
-          ]}>
+    <>
+      {isOpen && (
+        <Modal
+          visible={isOpen}
+          transparent
+          animationType="none"
+          onRequestClose={closeSidebar}>
           <TouchableOpacity
-            style={[styles.profileSection, { borderBottomColor: colors.border }]}
-            onPress={() => {
-              closeSidebar();
-              router.push('/(tabs)/profile');
-            }}
-            activeOpacity={0.7}>
-            <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
-              <Text style={styles.avatarText}>
-                {user?.full_name.charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={[styles.profileName, { color: colors.text }]}>
-                {user?.full_name}
-              </Text>
-              <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
-                {user?.email}
-              </Text>
-            </View>
-            <IconSymbol name="chevron.right" size={20} color={colors.textSecondary} />
+            style={styles.overlay}
+            activeOpacity={1}
+            onPress={closeSidebar}>
+            <Animated.View
+              style={[
+                styles.sidebar,
+                {
+                  backgroundColor: colors.backgroundSecondary,
+                  transform: [{ translateX }],
+                },
+              ]}>
+              <TouchableOpacity
+                style={[styles.profileSection, { borderBottomColor: colors.border }]}
+                onPress={() => {
+                  closeSidebar();
+                  router.push('/(tabs)/profile');
+                }}
+                activeOpacity={0.7}>
+                <View style={[styles.avatar, { backgroundColor: colors.primary }]}>
+                  <Text style={styles.avatarText}>
+                    {user?.full_name.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.profileInfo}>
+                  <Text style={[styles.profileName, { color: colors.text }]}>
+                    {user?.full_name}
+                  </Text>
+                  <Text style={[styles.profileEmail, { color: colors.textSecondary }]}>
+                    {user?.email}
+                  </Text>
+                </View>
+                <IconSymbol name="chevron.right" size={20} color={colors.textSecondary} />
+              </TouchableOpacity>
+
+              <View style={styles.menuSection}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  Gerenciamento
+                </Text>
+                <MenuItem
+                  icon="arrow.down.doc.fill"
+                  label="Exportar Registros"
+                  onPress={handleOpenExport}
+                />
+                <MenuItem
+                  icon="arrow.up.doc.fill"
+                  label="Restaurar Dados"
+                  onPress={handleOpenRestore}
+                />
+                <MenuItem
+                  icon="trash.fill"
+                  label="Resetar e Apagar"
+                  onPress={handleOpenDelete}
+                />
+              </View>
+
+              <View style={styles.menuSection}>
+                <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
+                  PoupaDin
+                </Text>
+                <MenuItem icon="house.fill" label="Curtir" />
+                <MenuItem icon="paperplane.fill" label="Feedbacks" />
+                <MenuItem icon="paperplane.fill" label="Convidar Amigos" />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.logoutButton, { backgroundColor: colors.error }]}
+                onPress={handleLogout}
+                activeOpacity={0.8}>
+                <Text style={styles.logoutText}>Sair da Conta</Text>
+              </TouchableOpacity>
+            </Animated.View>
           </TouchableOpacity>
+        </Modal>
+      )}
 
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              Gerenciamento
-            </Text>
-            <MenuItem icon="paperplane.fill" label="Exportar Registros" />
-            <MenuItem icon="house.fill" label="Restaurar e Backup" />
-            <MenuItem icon="house.fill" label="Resetar e Apagar" />
-          </View>
+      <ExportDataModal
+        visible={exportModalVisible}
+        onClose={() => setExportModalVisible(false)}
+      />
 
-          <View style={styles.menuSection}>
-            <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>
-              PoupaDin
-            </Text>
-            <MenuItem icon="house.fill" label="Curtir" />
-            <MenuItem icon="paperplane.fill" label="Feedbacks" />
-            <MenuItem icon="paperplane.fill" label="Convidar Amigos" />
-          </View>
+      <RestoreDataModal
+        visible={restoreModalVisible}
+        onClose={() => setRestoreModalVisible(false)}
+      />
 
-          <TouchableOpacity
-            style={[styles.logoutButton, { backgroundColor: colors.error }]}
-            onPress={handleLogout}
-            activeOpacity={0.8}>
-            <Text style={styles.logoutText}>Sair da Conta</Text>
-          </TouchableOpacity>
-        </Animated.View>
-      </TouchableOpacity>
-    </Modal>
+      <DeleteAccountModal
+        visible={deleteModalVisible}
+        onClose={() => setDeleteModalVisible(false)}
+      />
+    </>
   );
 }
 

@@ -3,10 +3,12 @@ import {
     Text,
     TextStyle,
     TouchableOpacity,
+    View,
     ViewStyle
 } from 'react-native';
 import { useColorScheme } from '../../hooks/use-color-scheme';
 import { BorderRadius, Colors, Spacing, Typography } from '../../theme';
+import { IconSymbol } from './icon-symbol';
 
 interface ButtonProps {
   title: string;
@@ -17,6 +19,8 @@ interface ButtonProps {
   loading?: boolean;
   fullWidth?: boolean;
   style?: ViewStyle;
+  textStyle?: TextStyle;
+  icon?: any;
 }
 
 export function Button({
@@ -28,6 +32,8 @@ export function Button({
   loading = false,
   fullWidth = true,
   style,
+  textStyle,
+  icon,
 }: ButtonProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const colors = Colors[colorScheme];
@@ -113,7 +119,17 @@ export function Button({
       fontWeight: Typography.fontWeight.semiBold,
       ...sizeStyles[size],
       ...variantStyles[variant],
+      ...textStyle,
     };
+  };
+
+  const getIconColor = () => {
+    if (variant === 'primary') {
+      return colorScheme === 'light' ? '#FFFFFF' : colors.background;
+    } else if (variant === 'outline') {
+      return colors.primary;
+    }
+    return colors.text;
   };
 
   return (
@@ -128,7 +144,12 @@ export function Button({
           size="small"
         />
       ) : (
-        <Text style={getTextStyle()}>{title}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: Spacing.sm }}>
+          {icon && (
+            <IconSymbol name={icon} size={20} color={getIconColor()} />
+          )}
+          <Text style={getTextStyle()}>{title}</Text>
+        </View>
       )}
     </TouchableOpacity>
   );

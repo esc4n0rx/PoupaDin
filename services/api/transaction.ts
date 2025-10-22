@@ -13,6 +13,47 @@ import { supabase } from '../supabase';
 
 export const TransactionAPI = {
   /**
+   * Listar todas as transações do usuário
+   */
+  getTransactions: async (): Promise<ApiResponse<Transaction[]>> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        return {
+          success: false,
+          error: 'Usuário não autenticado',
+        };
+      }
+
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('date', { ascending: false });
+
+      if (error) {
+        console.error('Get transactions error:', error);
+        return {
+          success: false,
+          error: 'Erro ao buscar transações',
+        };
+      }
+
+      return {
+        success: true,
+        data: data as Transaction[],
+      };
+    } catch (error) {
+      console.error('Get transactions error:', error);
+      return {
+        success: false,
+        error: 'Erro ao buscar transações',
+      };
+    }
+  },
+
+  /**
    * Listar transações de uma data específica
    */
   getTransactionsByDate: async (

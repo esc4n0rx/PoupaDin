@@ -1,0 +1,34 @@
+{
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_JWT_SECRET": "$JWT_SECRET",
+        "EXPO_PUBLIC_JWT_REFRESH_SECRET": "$JWT_REFRESH_SECRET"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_JWT_SECRET": "$JWT_SECRET",
+        "EXPO_PUBLIC_JWT_REFRESH_SECRET": "$JWT_REFRESH_SECRET"
+      }
+    },
+    "production": {
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "$SUPABASE_URL",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "$SUPABASE_ANON_KEY",
+        "EXPO_PUBLIC_JWT_SECRET": "$JWT_SECRET",
+        "EXPO_PUBLIC_JWT_REFRESH_SECRET": "$JWT_REFRESH_SECRET"
+      }
+    }
+  }
+}
